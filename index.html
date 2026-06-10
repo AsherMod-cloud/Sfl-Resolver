@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resolver · AsherMod</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0f; --surface: #12121a;
+      --border: rgba(255,255,255,0.07); --border-teal: rgba(45,212,191,0.22);
+      --primary: #2dd4bf; --primary-dim: rgba(45,212,191,0.1);
+      --text: #f1f5f9; --muted: #64748b; --muted2: #94a3b8;
+      --warn: #fbbf24; --warn-bg: rgba(251,191,36,0.08); --warn-border: rgba(251,191,36,0.2);
+      --error: #f87171; --error-bg: rgba(239,68,68,0.08); --error-border: rgba(239,68,68,0.18);
+      --r: 14px;
+    }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100dvh;
+      padding: 4.5rem 1.25rem 2.5rem;
+      overflow-x: hidden;
+    }
+    body::before {
+      content:""; position:fixed; width:70vw; height:70vw; top:-20%; left:-20%;
+      border-radius:50%; background:rgba(45,212,191,0.035); filter:blur(120px);
+      pointer-events:none; z-index:0;
+    }
+    body::after {
+      content:""; position:fixed; width:50vw; height:50vw; bottom:-15%; right:-15%;
+      border-radius:50%; background:rgba(99,102,241,0.04); filter:blur(100px);
+      pointer-events:none; z-index:0;
+    }
+    .wrap {
+      position:relative; z-index:1;
+      max-width:420px; margin:0 auto;
+    }
+    .header { text-align:center; margin-bottom:1.5rem; padding-top:0.5rem; }
+    .logo {
+      display:inline-flex; align-items:center; justify-content:center;
+      width:56px; height:56px; border-radius:18px;
+      background:var(--primary-dim); border:1px solid var(--border-teal);
+      margin-bottom:0.85rem;
+    }
+    .logo svg { color:var(--primary); }
+    h1 { font-size:2rem; font-weight:800; letter-spacing:-0.04em; margin-bottom:0.3rem; }
+    .tagline { color:var(--muted2); font-size:0.88rem; }
+    .card {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--r); padding:1.35rem;
+      box-shadow:0 8px 32px rgba(0,0,0,0.3);
+    }
+    .id-block {
+      background:var(--primary-dim); border:1px solid var(--border-teal);
+      border-radius:10px; padding:0.9rem 1rem;
+      display:flex; align-items:center; justify-content:space-between; gap:0.65rem;
+      margin-bottom:1rem;
+    }
+    .id-left { flex:1; min-width:0; }
+    .id-label { font-size:0.68rem; text-transform:uppercase; letter-spacing:0.09em; color:var(--muted); margin-bottom:0.25rem; }
+    .id-value {
+      font-family:"SF Mono","Fira Code",Consolas,monospace;
+      font-size:1rem; font-weight:700; color:var(--primary);
+      letter-spacing:0.04em; word-break:break-all;
+    }
+    .btn-copy {
+      flex-shrink:0; background:rgba(45,212,191,0.15); border:1px solid var(--border-teal);
+      border-radius:7px; color:var(--primary); padding:0.38rem 0.8rem;
+      font-size:0.78rem; font-weight:600; cursor:pointer; transition:background 0.2s;
+      white-space:nowrap;
+    }
+    .btn-copy:hover { background:rgba(45,212,191,0.28); }
+    .hint { font-size:0.79rem; color:var(--muted2); margin-bottom:1rem; line-height:1.55; }
+    .hint strong { color:var(--text); }
+    input[type="text"], input[type="url"] {
+      width:100%; height:48px; background:rgba(255,255,255,0.04);
+      border:1.5px solid rgba(255,255,255,0.1); border-radius:9px;
+      color:var(--text); font-size:0.9rem; padding:0 1rem; outline:none;
+      transition:border-color 0.2s; font-family:inherit;
+    }
+    input::placeholder { color:var(--muted); }
+    input:focus { border-color:var(--primary); }
+    .btn {
+      width:100%; margin-top:0.65rem; height:48px; background:var(--primary);
+      color:#0a0a0f; border:none; border-radius:9px; font-size:0.92rem;
+      font-weight:700; cursor:pointer; display:flex; align-items:center;
+      justify-content:center; gap:0.45rem; transition:opacity 0.2s, transform 0.1s;
+    }
+    .btn:hover { opacity:0.9; } .btn:active { transform:scale(0.98); }
+    .btn:disabled { opacity:0.45; cursor:not-allowed; }
+    .alert {
+      border-radius:9px; padding:0.7rem 0.9rem; font-size:0.83rem;
+      margin-bottom:0.85rem; display:none; line-height:1.45;
+    }
+    .alert.show { display:block; }
+    .alert.err { background:var(--error-bg); color:var(--error); border:1px solid var(--error-border); }
+    #mainScreen { display:none; }
+    .spinner {
+      width:17px; height:17px; border:2.5px solid rgba(0,0,0,0.18);
+      border-top-color:#0a0a0f; border-radius:50%; animation:spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .result {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:var(--r); padding:1.35rem; display:none; margin-top:0.9rem;
+    }
+    .result.show { display:block; }
+    .rlabel { font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin-bottom:0.3rem; }
+    .rtitle { font-size:0.98rem; font-weight:700; margin-bottom:1rem; line-height:1.4; }
+    .url-box {
+      background:var(--primary-dim); border:1px solid var(--border-teal);
+      border-radius:9px; padding:0.75rem 0.9rem;
+      display:flex; align-items:flex-start; gap:0.6rem; margin-bottom:0.85rem;
+    }
+    .url-text { flex:1; font-size:0.83rem; word-break:break-all; line-height:1.55; color:var(--primary); }
+    .cbtn {
+      flex-shrink:0; background:none; border:1px solid var(--border-teal);
+      border-radius:6px; color:var(--primary); padding:0.26rem 0.58rem;
+      font-size:0.74rem; font-weight:600; cursor:pointer; transition:background 0.2s;
+    }
+    .cbtn:hover { background:var(--primary-dim); }
+    .row { display:flex; gap:0.6rem; }
+    .btn-open {
+      flex:1; height:42px; background:var(--primary); color:#0a0a0f; border:none;
+      border-radius:8px; font-size:0.88rem; font-weight:700; cursor:pointer;
+      text-decoration:none; display:flex; align-items:center; justify-content:center;
+      gap:0.4rem; transition:opacity 0.2s;
+    }
+    .btn-open:hover { opacity:0.85; }
+    .btn-reset {
+      height:42px; padding:0 0.85rem; background:rgba(255,255,255,0.05);
+      border:1px solid var(--border); border-radius:8px; color:var(--muted2);
+      font-size:0.88rem; cursor:pointer; transition:background 0.2s;
+    }
+    .btn-reset:hover { background:rgba(255,255,255,0.09); color:var(--text); }
+    .meta { font-size:0.77rem; color:var(--muted); margin-top:0.6rem; }
+    .meta span { color:var(--primary); }
+    .foot { text-align:center; margin-top:0.85rem; }
+    .logout { font-size:0.74rem; color:var(--muted); cursor:pointer; background:none; border:none; text-decoration:underline; text-underline-offset:2px; }
+    .logout:hover { color:var(--muted2); }
+    .credit { text-align:center; margin-top:1.5rem; font-size:0.72rem; color:var(--muted); }
+    .credit a { color:var(--primary); text-decoration:none; }
+  </style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="header">
+    <div class="logo">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+      </svg>
+    </div>
+    <h1>Resolver</h1>
+    <p class="tagline">Skip the wait · Get straight to the destination</p>
+  </div>
+
+  <!-- LOGIN -->
+  <div id="loginScreen">
+    <div class="card">
+      <div class="id-block">
+        <div class="id-left">
+          <div class="id-label">ID Perangkat Kamu</div>
+          <div class="id-value" id="deviceCodeDisplay">—</div>
+        </div>
+        <button class="btn-copy" onclick="copyDeviceId()">Salin</button>
+      </div>
+      <p class="hint"><strong>Cara masuk:</strong> Salin ID di atas → tempel di kolom bawah → Masuk.</p>
+      <div class="alert err" id="loginAlert">Kode tidak sesuai. Salin ID perangkat dengan benar.</div>
+      <input type="text" id="accessInput" placeholder="Tempel ID perangkat di sini…" autocomplete="off" spellcheck="false">
+      <button class="btn" onclick="handleLogin()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        Masuk
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="mainScreen">
+    <div class="card">
+      <div class="alert err" id="alertBox"><span id="alertMsg"></span></div>
+      <input type="url" id="urlInput" placeholder="Paste link sfl.gl di sini…">
+      <button class="btn" id="submitBtn" onclick="handleSubmit()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
+        Reveal Destination
+      </button>
+    </div>
+
+    <div class="result" id="resultCard">
+      <div class="rlabel">Destination ditemukan</div>
+      <div class="rtitle" id="resultTitle"></div>
+      <div class="url-box">
+        <span class="url-text" id="resultUrl"></span>
+        <button class="cbtn" onclick="copyUrl()">Copy</button>
+      </div>
+      <div class="row">
+        <a id="openBtn" href="#" target="_blank" rel="noopener" class="btn-open">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          Buka Link
+        </a>
+        <button class="btn-reset" onclick="resetForm()">Coba lagi</button>
+      </div>
+      <div class="meta" id="resultMeta"></div>
+    </div>
+
+    <div class="foot">
+      <button class="logout" onclick="handleLogout()">Keluar / ganti perangkat</button>
+    </div>
+  </div>
+
+  <div class="credit">by <a href="https://asher-mod-bio.pages.dev" target="_blank">AsherMod</a></div>
+</div>
+
+<script>
+  const KEY_ID   = "res_device_id";
+  const KEY_AUTH = "res_authed";
+
+  function getOrCreateDeviceId() {
+    try {
+      let id = localStorage.getItem(KEY_ID);
+      if (!id) {
+        const bytes = crypto.getRandomValues(new Uint8Array(8));
+        const hex = Array.from(bytes).map(b => b.toString(16).padStart(2,"0")).join("").toUpperCase();
+        id = hex.slice(0,4)+"-"+hex.slice(4,8)+"-"+hex.slice(8,12)+"-"+hex.slice(12,16);
+        localStorage.setItem(KEY_ID, id);
+      }
+      return id;
+    } catch(e) { return "ERROR-STORAGE"; }
+  }
+
+  const deviceId = getOrCreateDeviceId();
+  document.getElementById("deviceCodeDisplay").textContent = deviceId;
+
+  function isAuthed() {
+    try { return localStorage.getItem(KEY_AUTH) === deviceId; } catch { return false; }
+  }
+
+  function showScreen(s) {
+    document.getElementById("loginScreen").style.display = s === "login" ? "block" : "none";
+    document.getElementById("mainScreen").style.display  = s === "main"  ? "block" : "none";
+  }
+
+  showScreen(isAuthed() ? "main" : "login");
+
+  async function copyDeviceId() {
+    try { await navigator.clipboard.writeText(deviceId); } catch {}
+    const btn = document.querySelector(".btn-copy");
+    btn.textContent = "Tersalin!";
+    setTimeout(() => btn.textContent = "Salin", 2000);
+  }
+
+  document.getElementById("accessInput").addEventListener("keydown", e => { if(e.key==="Enter") handleLogin(); });
+  function handleLogin() {
+    const val = document.getElementById("accessInput").value.trim().toUpperCase();
+    if (val === deviceId) {
+      try { localStorage.setItem(KEY_AUTH, deviceId); } catch {}
+      document.getElementById("loginAlert").className = "alert err";
+      showScreen("main");
+    } else {
+      document.getElementById("loginAlert").className = "alert err show";
+    }
+  }
+  function handleLogout() {
+    try { localStorage.removeItem(KEY_AUTH); } catch {}
+    showScreen("login");
+  }
+
+  const urlInput  = document.getElementById("urlInput");
+  const submitBtn = document.getElementById("submitBtn");
+  urlInput.addEventListener("keydown", e => { if(e.key==="Enter") handleSubmit(); });
+
+  function showErr(msg) { document.getElementById("alertMsg").textContent=msg; document.getElementById("alertBox").className="alert err show"; }
+  function hideErr() { document.getElementById("alertBox").className="alert err"; }
+
+  function setLoading(on) {
+    submitBtn.disabled = on;
+    submitBtn.innerHTML = on
+      ? '<div class="spinner"></div> Resolving…'
+      : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Reveal Destination';
+  }
+
+  async function handleSubmit() {
+    const url = urlInput.value.trim();
+    if (!url) return;
+    try { new URL(url); } catch { showErr("URL tidak valid — harus diawali https://"); return; }
+    hideErr(); setLoading(true);
+    try {
+      const res  = await fetch("/api/links/resolve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showErr(data.error || "Gagal resolve link."); setLoading(false); return; }
+      showResult(data);
+    } catch { showErr("Tidak bisa terhubung ke server. Coba lagi."); setLoading(false); }
+  }
+
+  function showResult(data) {
+    setLoading(false);
+    document.getElementById("resultCard").classList.add("show");
+    document.getElementById("resultTitle").textContent = data.title || "Link resolved";
+    document.getElementById("resultUrl").textContent   = data.finalUrl;
+    document.getElementById("openBtn").href            = data.finalUrl;
+    document.getElementById("resultMeta").innerHTML    =
+      "Melewati <span>"+data.steps+" redirect</span> dari <span>"+new URL(data.originalUrl).hostname+"</span>";
+    urlInput.value = "";
+  }
+
+  function resetForm() {
+    document.getElementById("resultCard").classList.remove("show"); hideErr(); urlInput.focus();
+  }
+
+  async function copyUrl() {
+    const url = document.getElementById("resultUrl").textContent;
+    try { await navigator.clipboard.writeText(url); } catch { alert("Copy manual: "+url); return; }
+    const b = document.querySelector(".cbtn"); b.textContent="Copied!";
+    setTimeout(()=>b.textContent="Copy",2000);
+  }
+</script>
+</body>
+</html>
